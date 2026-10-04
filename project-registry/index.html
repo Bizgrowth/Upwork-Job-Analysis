@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Registry — Bizgrowth</title>
+<style>
+  :root{--bg:#f8fafc;--card:#fff;--line:#e2e8f0;--text:#0f172a;--muted:#64748b;--blue:#2563eb;--green:#16a34a;--amber:#d97706;--red:#dc2626}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:48px;height:48px;border-radius:12px;background:var(--blue);display:grid;place-items:center;color:#fff;font-size:24px}
+  h1{margin:0;font-size:22px}.sub{color:var(--muted);font-size:14px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#fff;padding:10px 16px}
+  button.primary{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600}
+  button:disabled{opacity:.6;cursor:wait}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  main{max-width:1200px;margin:0 auto;padding:24px 32px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .stat b{display:block;font-size:40px}.stat span{color:var(--muted)}
+  .filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .filters input{flex:1;min-width:220px}
+  input,select,textarea{font:inherit;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;width:100%}
+  .filters select{width:auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}main{padding:16px}header{padding:12px 16px}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px}
+  .card h3{margin:0;font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card a{color:var(--muted);font-size:14px;text-decoration:none;word-break:break-all}
+  .goal{font-style:italic;color:var(--muted)}.goal.set{font-style:normal;color:var(--text)}
+  .notes{font-size:14px;color:var(--muted);white-space:pre-wrap}
+  .meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:14px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;background:#3b82f6}
+  .tag{background:#eff6ff;color:var(--blue);border-radius:999px;padding:2px 10px;font-size:12px}
+  .private{background:#fef3c7;color:var(--amber)}
+  .icon{padding:4px 10px;font-size:14px}
+  dialog{border:none;border-radius:16px;padding:24px;max-width:480px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(15,23,42,.5)}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+  .row{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .banner{padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:14px}
+  .banner.warn{background:#fef3c7;color:#92400e}.banner.err{background:#fee2e2;color:var(--red)}.banner.ok{background:#dcfce7;color:#166534}
+  .banner button{margin-left:8px;padding:4px 12px}
+  .empty{text-align:center;color:var(--muted);padding:48px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">📁</div><div><h1>Project Registry</h1><div class="sub" id="sub"></div></div></div>
+  <div class="actions">
+    <button id="btnToken">🔑 GitHub token</button>
+    <button id="btnSync">⟳ Sync GitHub</button>
+    <button id="btnBackup">⬇ Backup</button>
+    <button id="btnRestore">⬆ Restore</button>
+    <button class="primary" id="btnAdd">+ Add Project</button>
+  </div>
+</header>
+<main>
+  <div id="banner"></div>
+  <div class="stats">
+    <div class="stat"><b id="sTotal" style="color:var(--blue)">0</b><span>Total Projects</span></div>
+    <div class="stat"><b id="sRepos">0</b><span>GitHub Repos</span></div>
+    <div class="stat"><b id="sGoals" style="color:var(--green)">0</b><span>Goals Defined</span></div>
+    <div class="stat"><b id="sNeed" style="color:var(--amber)">0</b><span>Need Goal</span></div>
+  </div>
+  <div class="filters">
+    <input id="q" placeholder="Search projects, goals, notes…" />
+    <select id="fStatus"><option value="">All Statuses</option></select>
+    <select id="fCat"><option value="">All Categories</option></select>
+    <select id="fVis"><option value="">Public + Private</option><option value="private">Private only</option><option value="public">Public only</option></select>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<dialog id="dTok">
+  <h2 style="margin:0 0 8px">GitHub token</h2>
+  <p class="sub">Paste a GitHub token so the registry can list your <b>private</b> repos too. It is saved only in this browser and sent only to api.github.com.</p>
+  <p class="sub">Create one at GitHub → Settings → Developer settings → Personal access tokens. A fine-grained token with <b>Repository access: All repositories</b> and <b>Metadata: Read-only</b> is enough (a classic token needs the <code>repo</code> scope).</p>
+  <label>Token</label><input id="tok" type="password" autocomplete="off" placeholder="github_pat_… or ghp_…" />
+  <div class="row"><button id="tokClear">Remove token</button><button id="tokCancel">Cancel</button><button class="primary" id="tokSave">Save &amp; sync</button></div>
+</dialog>
+
+<dialog id="dEdit">
+  <h2 style="margin:0" id="eTitle">Edit project</h2>
+  <label>Name</label><input id="eName" />
+  <label>GitHub URL (optional)</label><input id="eUrl" placeholder="https://github.com/Bizgrowth/…" />
+  <label>Goal</label><textarea id="eGoal" rows="2" placeholder="What is this project for?"></textarea>
+  <label>Status</label><select id="eStatus"></select>
+  <label>Category</label><select id="eCat"></select>
+  <label>Notes</label><textarea id="eNotes" rows="3"></textarea>
+  <div class="row"><button id="eDel" style="margin-right:auto;color:var(--red)">Remove</button><button id="eCancel">Cancel</button><button class="primary" id="eSave">Save</button></div>
+</dialog>
+<input type="file" id="file" accept="application/json" hidden />
+
+<script>
+const OWNER = "Bizgrowth";
+const KEY = "project-registry-v2";
+const TOKEN_KEY = "project-registry-token";
+const STATUSES = ["Idea","Active","Paused","Shipped","Archived"];
+const CATEGORIES = ["Client work","Internal tool","Website","Automation","Agent / AI","Experiment","Other"];
+
+// ---- storage (every access guarded) ----
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch{}}
+function getToken(){try{return localStorage.getItem(TOKEN_KEY)||""}catch{return ""}}
+function setToken(t){try{t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY)}catch{}}
+
+// state.repos: GitHub-synced list; state.manual: user-added; state.meta: edits keyed by project id
+let state = Object.assign({repos:[],manual:[],meta:{},lastSynced:null,scope:"public"}, load());
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function all(){
+  return [...state.repos, ...state.manual].map(p => ({...p, ...(state.meta[p.id]||{})}));
+}
+
+// ---- GitHub sync ----
+function banner(kind,html){ $("banner").innerHTML = html ? `<div class="banner ${kind}">${html}</div>` : ""; }
+
+async function sync(){
+  const token = getToken();
+  $("btnSync").disabled = true; $("btnSync").textContent = "Syncing…";
+  banner("", "");
+  try{
+    const headers = {Accept:"application/vnd.github+json"};
+    if(token) headers.Authorization = "Bearer "+token;
+    const base = token
+      ? "https://api.github.com/user/repos?affiliation=owner,organization_member&sort=updated&per_page=100"
+      : `https://api.github.com/users/${OWNER}/repos?sort=updated&per_page=100`;
+    let page = 1, out = [];
+    while(true){
+      const r = await fetch(base+"&page="+page,{headers});
+      if(r.status===401) throw new Error("GitHub rejected the token (expired or wrong). Click “GitHub token” to replace it.");
+      if(r.status===403) throw new Error("GitHub rate limit or permission problem (403). Add a token, or try again later.");
+      if(!r.ok) throw new Error("GitHub error "+r.status);
+      const batch = await r.json();
+      out = out.concat(batch);
+      if(batch.length < 100 || page >= 10) break;
+      page++;
+    }
+    state.repos = out
+      .filter(e => (e.owner?.login||"").toLowerCase() === OWNER.toLowerCase())
+      .map(e => ({id:"gh-"+e.id,name:e.name,url:e.html_url,language:e.language,updatedAt:e.updated_at,isPrivate:!!e.private,archived:!!e.archived,source:"github"}));
+    state.lastSynced = new Date().toISOString();
+    state.scope = token ? "all" : "public";
+    save();
+    const priv = state.repos.filter(r=>r.isPrivate).length;
+    if(!token) banner("warn", `Showing <b>public repos only</b> (${state.repos.length}). Add a GitHub token to include private repos. <button onclick="openToken()">Add token</button>`);
+    else banner("ok", `Synced ${state.repos.length} repos (${priv} private).`);
+  }catch(e){
+    banner("err", esc(e.message||e));
+  }finally{
+    $("btnSync").disabled = false; $("btnSync").textContent = "⟳ Sync GitHub";
+    render();
+  }
+}
+
+// ---- render ----
+function fill(sel, items, first){
+  const cur = sel.value;
+  sel.innerHTML = (first!==undefined?`<option value="">${first}</option>`:"") + items.map(i=>`<option>${esc(i)}</option>`).join("");
+  sel.value = cur;
+}
+
+function render(){
+  const list = all();
+  const goals = list.filter(p=>(p.goal||"").trim()).length;
+  $("sTotal").textContent = list.length;
+  $("sRepos").textContent = state.repos.length;
+  $("sGoals").textContent = goals;
+  $("sNeed").textContent = list.length - goals;
+  $("sub").textContent = `${OWNER} · ${list.length} projects` + (state.lastSynced ? ` · synced ${new Date(state.lastSynced).toLocaleString()}` : "");
+
+  const q = $("q").value.toLowerCase(), fs = $("fStatus").value, fc = $("fCat").value, fv = $("fVis").value;
+  const shown = list.filter(p =>
+    (!q || [p.name,p.goal,p.notes,p.language].some(x=>(x||"").toLowerCase().includes(q))) &&
+    (!fs || p.status===fs) && (!fc || p.category===fc) &&
+    (!fv || (fv==="private") === !!p.isPrivate)
+  );
+  $("grid").innerHTML = shown.length ? shown.map(p=>`
+    <div class="card">
+      <h3><span>${esc(p.name)} ${p.isPrivate?'<span class="tag private">private</span>':''}</span>
+        <button class="icon" onclick="edit('${esc(p.id)}')" title="Edit">✎</button></h3>
+      ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">↗ ${esc(p.url.replace(/^https?:\/\//,""))}</a>`:""}
+      <div class="goal ${p.goal?"set":""}">${p.goal?esc(p.goal):"No goal set — click edit to add one"}</div>
+      ${p.notes?`<div class="notes">${esc(p.notes)}</div>`:""}
+      <div class="meta">
+        ${p.language?`<span><span class="dot"></span>${esc(p.language)}</span>`:""}
+        ${p.updatedAt?`<span>Updated ${new Date(p.updatedAt).toLocaleDateString()}</span>`:""}
+        ${p.status?`<span class="tag">${esc(p.status)}</span>`:""}
+        ${p.category?`<span class="tag">${esc(p.category)}</span>`:""}
+      </div>
+    </div>`).join("") : `<div class="empty">No projects match.</div>`;
+}
+
+// ---- edit / add ----
+let editing = null;
+function edit(id){
+  const p = all().find(x=>x.id===id) || {};
+  editing = id;
+  $("eTitle").textContent = id ? "Edit project" : "Add project";
+  $("eName").value = p.name||""; $("eUrl").value = p.url||"";
+  $("eGoal").value = p.goal||""; $("eNotes").value = p.notes||"";
+  $("eStatus").value = p.status||STATUSES[0]; $("eCat").value = p.category||"Other";
+  $("eName").disabled = $("eUrl").disabled = p.source==="github";
+  $("eDel").style.display = p.source==="manual" ? "" : "none";
+  $("dEdit").showModal();
+}
+$("btnAdd").onclick = () => { editing = null; edit(null); };
+$("eCancel").onclick = () => $("dEdit").close();
+$("eSave").onclick = () => {
+  const name = $("eName").value.trim();
+  if(!name) return;
+  const vals = {goal:$("eGoal").value.trim(),notes:$("eNotes").value.trim(),status:$("eStatus").value,category:$("eCat").value};
+  if(editing){
+    state.meta[editing] = {...(state.meta[editing]||{}), ...vals};
+    const m = state.manual.find(x=>x.id===editing);
+    if(m){ m.name = name; m.url = $("eUrl").value.trim(); }
+  } else {
+    const id = "m-"+Date.now();
+    state.manual.push({id,name,url:$("eUrl").value.trim(),source:"manual",updatedAt:new Date().toISOString()});
+    state.meta[id] = vals;
+  }
+  save(); $("dEdit").close(); render();
+};
+$("eDel").onclick = () => {
+  if(!confirm("Remove this project from the registry?")) return;
+  state.manual = state.manual.filter(x=>x.id!==editing);
+  delete state.meta[editing]; save(); $("dEdit").close(); render();
+};
+
+// ---- token dialog ----
+function openToken(){ $("tok").value = ""; $("dTok").showModal(); }
+$("btnToken").onclick = openToken;
+$("tokCancel").onclick = () => $("dTok").close();
+$("tokClear").onclick = () => { setToken(""); $("dTok").close(); sync(); };
+$("tokSave").onclick = () => { const t=$("tok").value.trim(); if(!t) return; setToken(t); $("dTok").close(); sync(); };
+
+// ---- backup / restore (edits live in this browser, so keep a copy) ----
+$("btnBackup").onclick = () => {
+  const blob = new Blob([JSON.stringify({manual:state.manual,meta:state.meta},null,2)],{type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "project-registry-backup.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+$("btnRestore").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  try{
+    const d = JSON.parse(await e.target.files[0].text());
+    state.manual = d.manual||[]; state.meta = d.meta||{}; save(); render(); banner("ok","Backup restored.");
+  }catch{ banner("err","That file isn’t a valid backup."); }
+  e.target.value = "";
+};
+
+// ---- init ----
+fill($("fStatus"),STATUSES,"All Statuses"); fill($("fCat"),CATEGORIES,"All Categories");
+fill($("eStatus"),STATUSES); fill($("eCat"),CATEGORIES);
+["q","fStatus","fCat","fVis"].forEach(id=>$(id).addEventListener("input",render));
+$("btnSync").onclick = sync;
+render();
+if(!state.repos.length || (getToken() && state.scope!=="all")) sync();
+else if(!getToken()) banner("warn",`Showing <b>public repos only</b> (${state.repos.length}). Add a GitHub token to include private repos. <button onclick="openToken()">Add token</button>`);
+</script>
+</body>
+</html>
